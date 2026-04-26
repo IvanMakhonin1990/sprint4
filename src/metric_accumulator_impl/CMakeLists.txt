@@ -8,9 +8,10 @@ add_executable(${target}
 
 target_link_libraries(${target}
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         metric_accumulator
+        metric
         function
         file
 )
