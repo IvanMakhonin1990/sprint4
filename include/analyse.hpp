@@ -40,7 +40,22 @@ namespace rs = std::ranges;
  */
 auto AnalyseFunctions(const std::vector<std::string> &files,
                       const analyzer::metric::MetricExtractor &metric_extractor) {
-    // здесь ваш код
+    auto process_file = [](const std::string& f) {
+        return analyzer::function::FunctionExtractor{}.Get(analyzer::file::File{f});
+    };
+    auto extract_metrics = [&](const analyzer::function::Function& func) {
+        return std::make_pair(func, metric_extractor.Get(func));
+    };
+
+    auto pipeline = files
+                  | rv::transform(process_file)
+                  | rv::join
+                  | rv::transform(extract_metrics);
+
+    using PairType = std::pair<analyzer::function::Function, analyzer::metric::MetricResults>;
+    std::vector<PairType> result;
+    rs::copy(pipeline, std::back_inserter(result));
+    return result;
 }
 
 /**
@@ -62,7 +77,15 @@ auto AnalyseFunctions(const std::vector<std::string> &files,
  * действительно исчезают из результата.
  */
 auto SplitByClasses(const auto &analysis) {
-    // здесь ваш код
+    auto has_class = [](const auto& pair) {
+        return pair.first.class_name.has_value();
+    };
+    auto same_class = [](const auto& a, const auto& b) {
+        return a.first.class_name == b.first.class_name;
+    };
+    return analysis
+         | rv::filter(has_class)
+         | rv::chunk_by(same_class);
 }
 
 /**
@@ -74,7 +97,11 @@ auto SplitByClasses(const auto &analysis) {
  * - Использует `chunk_by`, поэтому **порядок функций в `analysis` должен быть по файлам**.
  */
 auto SplitByFiles(const auto &analysis) {
-    // здесь ваш код
+    auto same_file = [](const auto& a, const auto& b) {
+        return a.first.filename == b.first.filename;
+    };
+    return analysis
+         | rv::chunk_by(same_file);
 }
 
 /**
@@ -87,7 +114,10 @@ auto SplitByFiles(const auto &analysis) {
  */
 void AccumulateFunctionAnalysis(const auto &analysis,
                                 const analyzer::metric_accumulator::MetricsAccumulator &accumulator) {
-    // здесь ваш код
+    auto accumulate_one = [&](const auto& pair) {
+        accumulator.AccumulateNextFunctionResults(pair.second);
+    };
+    rs::for_each(analysis, accumulate_one);
 }
 
 }  // namespace analyzer

@@ -23,34 +23,32 @@ MetricResult::ValueType CountParametersMetric::CalculateImpl(const function::Fun
     const std::string parameters_marker = "(parameters";
     size_t params_start = function_ast.find(parameters_marker);
     if (params_start == std::string::npos) {
-        return 0;
+        return MetricResult::ValueType{0};
     }
 
-    // 2. Находим конец блока параметров
-    size_t balance = 1;
-    size_t params_end = params_start + parameters_marker.length();
-    while (params_end < function_ast.size() && balance > 0) {
-        if (function_ast[params_end] == '(')
+    // 2. Находим конец блока параметров (балансировка скобок)
+    int balance = 0;
+    auto it = std::ranges::find_if(function_ast | std::views::drop(params_start), [&balance](char c) {
+        if (c == '(') {
             balance++;
-        else if (function_ast[params_end] == ')')
+        } else if (c == ')') {
             balance--;
-        params_end++;
+        }
+        return balance == 0;
+    });
+
+    if (it == function_ast.end()) {
+        return MetricResult::ValueType{0};
     }
+    size_t params_end = std::distance(function_ast.begin(), it.base());
 
     // 3. Извлекаем подстроку с параметрами
     std::string_view params_block(function_ast.data() + params_start, params_end - params_start);
 
     // 4. Считаем параметры (идентификаторы или pattern-ы)
-    int count = 0;
-    size_t pos = 0;
     const std::string id_marker = "(identifier";
-
-    while ((pos = params_block.find(id_marker, pos)) != std::string_view::npos) {
-        count++;
-        pos += id_marker.length();
-    }
-
-    return count;
+    auto splits = std::views::split(params_block, id_marker);
+    return MetricResult::ValueType{static_cast<int>(std::ranges::distance(splits) - 1)};
 }
 
 }  // namespace analyzer::metric::metric_impl

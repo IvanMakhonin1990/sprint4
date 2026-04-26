@@ -4,12 +4,13 @@ add_executable(${target}
     tests/code_lines_count.cpp
     tests/cyclomatic_complexity.cpp
     tests/parameters_count.cpp
+    tests/naming_style.cpp
 )
 
 target_link_libraries(${target}
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         metric
         function
         file
